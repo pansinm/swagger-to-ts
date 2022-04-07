@@ -30,6 +30,11 @@
     "ts-node": "^10.7.0"
   },
   "scripts": {
-    "test": "jest"
-  }
+    "test": "jest",
+    "prepublishOnly": "tsc"
+  },
+  "bin": {
+    "swagger-to-ts": "dist/cli.js"
+  },
+  "files": ["config", "dist"]
 }
