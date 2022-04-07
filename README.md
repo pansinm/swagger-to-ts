@@ -7,7 +7,7 @@
 ```bash
 npm install @upace/swagger-to-ts --global
 
-swagger-to-ts -i http://yourhost/api-docs -o output
+swagger-to-ts -s http://yourhost/api-docs -o output
 ```
 
 ## 实现 httpClient
