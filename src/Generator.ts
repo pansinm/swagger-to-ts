@@ -65,6 +65,7 @@ class Generator {
     return results;
   }
 
+  private traversedRef = new Set<string>()
   /**
    * 遍历过滤依赖的ref
    * @param object
@@ -76,6 +77,10 @@ class Generator {
     }
     if (object.$ref) {
       this.depRefs.add(object.$ref);
+      if (this.traversedRef.has(object.$ref)) {
+        return;
+      }
+      this.traversedRef.add(object.$ref);
       const refSchema = getRefedSchema(this.spec, object.$ref);
       this.parseDepsRef(refSchema);
       return;
