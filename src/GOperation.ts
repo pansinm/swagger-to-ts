@@ -55,14 +55,22 @@ class GOperation {
 
   usedTypeNames() {
     const typeNames = new Set<string>([]);
+
     const exactTypeNames = (root: ts.Node) => {
       ts.forEachChild(root, (node) => {
-          if (ts.isTypeReferenceNode(node)) {
-            typeNames.add((node.typeName as ts.Identifier).escapedText.toString())
-          }
-      })
-    }
-    this.parameterDeclarations.forEach(declaration => {
+        if (!node) {
+          return;
+        }
+        if (ts.isTypeReferenceNode(node)) {
+          typeNames.add(
+            (node.typeName as ts.Identifier).escapedText.toString()
+          );
+        } else {
+          exactTypeNames(node);
+        }
+      });
+    };
+    this.parameterDeclarations.forEach((declaration) => {
       exactTypeNames(declaration);
     });
     exactTypeNames(this.returnType);
@@ -186,66 +194,59 @@ class GOperation {
     }
 
     if (this.query.length) {
-      const template = factory.createTemplateExpression(
-        factory.createTemplateHead("?", "?"),
+      const queryProperties = this.query.map((item, index) => {
+        let stringifyVal: ts.Expression = factory.createIdentifier(
+          escapeVar(item.name)
+        );
 
         // https://swagger.io/docs/specification/2-0/describing-parameters/#array-and-multi-value-parameters
-        this.query.map((item, index) => {
-          let stringifyVal: ts.Expression = factory.createIdentifier(
-            escapeVar(item.name)
-          );
-
-          if (item.collectionFormat && item.collectionFormat !== "multi") {
-            const sep: any = {
-              scv: ",",
-              ssv: " ",
-              tsv: "\t",
-              pipes: "|",
-            };
-            stringifyVal = factory.createCallExpression(
-              factory.createPropertyAccessExpression(
-                factory.createIdentifier(escapeVar(item.name)),
-                factory.createIdentifier("join")
-              ),
-              undefined,
-              [factory.createStringLiteral(sep[item.collectionFormat])]
-            );
-          }
-
-          const stringifyArgs = [
-            factory.createObjectLiteralExpression([
-              factory.createPropertyAssignment(
-                factory.createIdentifier(escapeVar(item.name)),
-                stringifyVal
-              ),
-            ]),
-          ];
-
-          if (item.collectionFormat === "multi") {
-            stringifyArgs.push(
-              factory.createObjectLiteralExpression([
-                factory.createPropertyAssignment(
-                  factory.createIdentifier("arrayFormat"),
-                  factory.createStringLiteral("repeat")
-                ),
-              ])
-            );
-          }
-
-          return factory.createTemplateSpan(
-            factory.createCallExpression(
-              factory.createPropertyAccessExpression(
-                factory.createIdentifier("qs"),
-                factory.createIdentifier("stringify")
-              ),
-              undefined,
-              stringifyArgs
+        if (item.collectionFormat && item.collectionFormat !== "multi") {
+          const sep: any = {
+            scv: ",",
+            ssv: " ",
+            tsv: "\t",
+            pipes: "|",
+          };
+          stringifyVal = factory.createCallExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier(escapeVar(item.name)),
+              factory.createIdentifier("join")
             ),
-            index < this.query.length - 1
-              ? factory.createTemplateMiddle("&", "&")
-              : factory.createTemplateTail("", "")
+            undefined,
+            [factory.createStringLiteral(sep[item.collectionFormat])]
           );
-        })
+        }
+        return factory.createPropertyAssignment(
+          factory.createIdentifier(escapeVar(item.name)),
+          stringifyVal
+        );
+      });
+
+      const stringifyArgs = [
+        factory.createObjectLiteralExpression(queryProperties),
+        factory.createObjectLiteralExpression([
+          factory.createPropertyAssignment(
+            factory.createIdentifier("arrayFormat"),
+            factory.createStringLiteral("repeat")
+          ),
+        ]),
+      ];
+
+      const span = factory.createTemplateSpan(
+        factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier("qs"),
+            factory.createIdentifier("stringify")
+          ),
+          undefined,
+          stringifyArgs
+        ),
+        factory.createTemplateTail("", "")
+      );
+
+      const template = factory.createTemplateExpression(
+        factory.createTemplateHead("?", "?"),
+        [span]
       );
 
       return factory.createBinaryExpression(

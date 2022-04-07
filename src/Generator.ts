@@ -132,6 +132,7 @@ class Generator {
       });
     });
 
+    // import httpClient from './httpClient';
     statements.unshift(
       factory.createImportDeclaration(
         undefined,
@@ -144,7 +145,8 @@ class Generator {
         factory.createStringLiteral(this.httpClientPath)
       )
     );
-
+    
+    // import {...} from './definitions';
     if (usedTypeNames.size > 0) {
       statements.unshift(
         factory.createImportDeclaration(
@@ -170,6 +172,20 @@ class Generator {
         )
       );
     }
+
+    // import qs from 'qs';
+    statements.unshift(
+      factory.createImportDeclaration(
+        undefined,
+        undefined,
+        factory.createImportClause(
+          false,
+          factory.createIdentifier("qs"),
+          undefined
+        ),
+        factory.createStringLiteral("qs")
+      )
+    );
     const sourceFile = factory.createSourceFile(
       statements,
       factory.createToken(ts.SyntaxKind.EndOfFileToken),
@@ -190,9 +206,6 @@ class Generator {
       const swaggerSchema = getRefedSchema(this.spec, ref);
       const schema = new GSchema(swaggerSchema);
       const typeNode = schema.toTsType();
-      if (typeAliasName === "OrderPayLogDTO") {
-        console.log(ref, typeAliasName);
-      }
       /**
        * 生成类型,如：
        * type A = {
