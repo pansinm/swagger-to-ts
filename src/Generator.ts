@@ -100,8 +100,8 @@ class Generator {
   generateInfoComment() {
     return factory.createJSDocComment(
       [
-        `title: ${this.spec.info.title || ''}`,
-        `description: ${this.spec.info.description || ''}`,
+        `title: ${this.spec.info.title || ""}`,
+        `description: ${this.spec.info.description || ""}`,
         `version: ${this.spec.info.version}`,
         `contact:`,
         Object.entries(this.spec.info.contact || {})
@@ -125,21 +125,24 @@ class Generator {
         gOperation.usedTypeNames().forEach((name) => usedTypeNames.add(name));
         const statement = factory.createVariableStatement(
           [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
-          factory.createVariableDeclarationList([
-            factory.createVariableDeclaration(
-              factory.createIdentifier(gOperation.getId()!),
-              undefined,
-              undefined,
-              factory.createArrowFunction(
+          factory.createVariableDeclarationList(
+            [
+              factory.createVariableDeclaration(
+                factory.createIdentifier(gOperation.getId()!),
                 undefined,
                 undefined,
-                gOperation.getParameterDeclarations(),
-                gOperation.getReturnType(),
-                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                gOperation.getBlock()
-              )
-            ),
-          ])
+                factory.createArrowFunction(
+                  undefined,
+                  undefined,
+                  gOperation.getParameterDeclarations(),
+                  gOperation.getReturnType(),
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  gOperation.getBlock()
+                )
+              ),
+            ],
+            ts.NodeFlags.Const
+          )
         );
         addJSDocComment(statement, gOperation.getJsDoc());
         statements.push(statement);
