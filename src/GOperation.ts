@@ -186,7 +186,8 @@ class GOperation {
    * @returns
    */
   private createUrlNode() {
-    const pathName = trimQuery(this.pathName);
+    const basePath = this.spec.basePath || ''
+    const pathName = basePath + trimQuery(this.pathName);
     let pathNameNode: ts.StringLiteral | ts.TemplateExpression =
       factory.createStringLiteral(pathName);
     if (this.path.length) {

@@ -97,6 +97,20 @@ class Generator {
     return [this.generateOperations(), this.generateDefinitions()];
   }
 
+  generateInfoComment() {
+    return factory.createJSDocComment(
+      [
+        `title: ${this.spec.info.title || ''}`,
+        `description: ${this.spec.info.description || ''}`,
+        `version: ${this.spec.info.version}`,
+        `contact:`,
+        Object.entries(this.spec.info.contact || {})
+          .map(([key, val]) => `\t${key}: ${val}`)
+          .join("\n"),
+      ].join("\n")
+    );
+  }
+
   generateOperations(): ts.SourceFile {
     const statements: ts.Statement[] = [];
     const usedTypeNames = new Set<string>([]);
@@ -145,7 +159,7 @@ class Generator {
         factory.createStringLiteral(this.httpClientPath)
       )
     );
-    
+
     // import {...} from './definitions';
     if (usedTypeNames.size > 0) {
       statements.unshift(
@@ -174,18 +188,22 @@ class Generator {
     }
 
     // import qs from 'qs';
-    statements.unshift(
-      factory.createImportDeclaration(
-        undefined,
-        undefined,
-        factory.createImportClause(
-          false,
-          factory.createIdentifier("qs"),
-          undefined
-        ),
-        factory.createStringLiteral("qs")
-      )
+    const qsImport = factory.createImportDeclaration(
+      undefined,
+      undefined,
+      factory.createImportClause(
+        false,
+        factory.createIdentifier("qs"),
+        undefined
+      ),
+      factory.createStringLiteral("qs")
     );
+
+    statements.unshift(qsImport);
+
+    // 文件开头注释
+    addJSDocComment(qsImport, this.generateInfoComment());
+
     const sourceFile = factory.createSourceFile(
       statements,
       factory.createToken(ts.SyntaxKind.EndOfFileToken),
