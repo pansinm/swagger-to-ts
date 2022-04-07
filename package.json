@@ -1,6 +1,6 @@
 {
   "name": "@upace/swagger-to-ts",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Convert Swagger document to TypeScript call",
   "main": "dist/index.js",
   "repository": "https://gitee.com/upace/swagger-to-ts.git",
