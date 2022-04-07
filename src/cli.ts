@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { program } from "commander";
 import nodeFetch from "node-fetch";
-import { Generator } from "./Generator";
+import Generator, { GeneratorOptions } from "./Generator";
 import fse from "fs-extra";
 import ts from "typescript";
 import path from "path";
@@ -13,9 +13,14 @@ const printer = ts.createPrinter({
 });
 
 program
-  .option("-i, --input [input]", "输入url")
+  .option("-s, --swagger [swagger]", "swagger路径或url")
   .option("-o, --output [output]", "输入目录")
-  .option("-t, --tag [tag]", "只生成特定tag的接口")
+  .option("--exclude-tags [excludeTags]", "排除指定tag，逗号分割")
+  .option("--include-tags [includeTags]", "只生成特定tag的接口,逗号分割")
+  .option("--exclude-path [excludePath]", "排除特定路径，支持正则")
+  .option("--include-path [includePath]", "只生存特定路径接口，支持正则")
+  .option("--http-client-output [path]", "httpClient输出路径，默认存于输出目录")
+  .option("--config [config]", "使用配置文件")
   .parse(process.argv);
 
 const options = program.opts();
@@ -33,42 +38,86 @@ const prettierConfig: prettier.Options = {
   arrowParens: "always", // https://github.com/airbnb/javascript#8.4
   parser: "typescript",
 };
+
+interface GenerateOptions extends Partial<GeneratorOptions> {
+  pathOrUrl: string;
+  outputDir: string;
+  httpClientOutputDir: string;
+}
+
+async function getSwagger(pathOrUrl: string) {
+  if (/https?:/.test(pathOrUrl)) {
+    const res = await nodeFetch(pathOrUrl, {
+      headers: { Accept: "application/json, text/plain" },
+    });
+    const spec = (await res.json()) as Spec;
+    return spec;
+  }
+  const json = fse.readFileSync(pathOrUrl, "utf-8");
+  return JSON.parse(json);
+}
+
+async function generate({
+  pathOrUrl,
+  outputDir,
+  httpClientOutputDir,
+  ...rest
+}: GenerateOptions) {
+  const spec = await getSwagger(pathOrUrl);
+  let httpClientPath = path
+    .relative(
+      path.resolve(outputDir),
+      path.resolve(httpClientOutputDir, "httpClient")
+    )
+    .replace(/\\/g, "/");
+  httpClientPath = httpClientPath.startsWith(".")
+    ? httpClientPath
+    : "./" + httpClientPath;
+  const gen = new Generator(spec, { ...rest, httpClientPath });
+  const sourceFiles = gen.generate();
+  sourceFiles.forEach((sourceFile) => {
+    const filename = outputDir + "/" + sourceFile.fileName;
+    fse.ensureFileSync(filename);
+    const result = prettier.format(
+      printer.printFile(sourceFile),
+      prettierConfig
+    );
+    fse.writeFileSync(filename, result);
+  });
+
+  const configDir = path.join(__dirname, "../config");
+  fse.copySync(configDir, httpClientOutputDir);
+}
+
 async function run() {
   try {
-    const url = options.input;
-    const dir = options.output;
-    const res = await nodeFetch(url, {
-      headers: { Accept:	'application/json, text/plain'},
-    });
-    const spec = await res.json() as Spec;
-    const tag = options.tag;
-    let filter: any = () => true;
-    if (tag) {
-      filter = (url: string, operation: Operation) => {
-        return operation && operation.tags && operation.tags.includes(tag);
-      };
-    }
-    const gen = new Generator(spec, filter);
-    gen.generate();
-    Object.entries(gen.sources).forEach(([fileName, sourceFile]) => {
-      let pathName = fileName;
-      if (dir) {
-        pathName = path.posix.join(dir, pathName);
+    if (options.config) {
+      const config = require(path.resolve(options.config));
+      for (let swagger of config.swaggers) {
+        await generate({
+          ...swagger,
+          pathOrUrl: swagger.swagger,
+          outputDir: swagger.output,
+          httpClientOutputDir: swagger.httpClientOutput || config.httpClientOutput || swagger.output,
+        })
       }
-      fse.ensureFileSync(pathName);
-      const result = prettier.format(
-        printer.printFile(sourceFile),
-        prettierConfig
-      );
-
-      fse.writeFileSync(pathName, result);
-    });
-
-    const configDir = path.join(__dirname, "../config");
-    const distDir = path.join(dir || "", "config");
-    if (!fse.existsSync(distDir)) {
-      fse.ensureDirSync(distDir);
-      fse.copySync(configDir, distDir);
+    } else {
+      const pathOrUrl = options.swagger;
+      const outputDir = options.output;
+      const httpClientOutput = options.httpClientOutput || outputDir;
+      const excludePath = options.excludePath;
+      const includePath = options.includePath;
+      const excludeTags = options.excludeTags;
+      const includeTags = options.includeTags;
+      await generate({
+        pathOrUrl,
+        outputDir,
+        httpClientOutputDir: httpClientOutput,
+        excludePath,
+        excludeTags,
+        includePath,
+        includeTags,
+      });
     }
   } catch (err) {
     // tslint:disable-next-line: no-console

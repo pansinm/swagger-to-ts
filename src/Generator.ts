@@ -1,270 +1,226 @@
-import {
-  Parameter,
-  Operation,
-  Spec,
-  Path,
-  PathParameter,
-  QueryParameter,
-  BodyParameter,
-  Schema,
-  Response,
-  Reference,
-} from "swagger-schema-official";
+import { Operation, Path, Spec } from "swagger-schema-official";
 import ts, { factory } from "typescript";
-import path from "path";
-
-import _ from "lodash";
+import GOperation from "./GOperation";
+import { GSchema } from "./GSchema";
 import {
-  createApiFileName,
-  createHttpInvokeDeclaration,
-  parseSwaggerPathTemplate,
-  trimQuery,
-  createModelFileName,
-  getModelName,
+  addJSDocComment,
+  Filter,
+  getRefedSchema,
+  getRefTypeName,
+  normalizePathNameFilter,
+  normalizeTagFilter,
 } from "./util";
-import { Template } from "./Template";
-import {
-  createPathParameterAst,
-  createQuestionToken,
-  createTypeNode,
-} from "./parameter";
-import { SchemaGenerator } from "./SchemaGenerator";
-type Method = "get" | "put" | "post" | "delete" | "options" | "head" | "patch";
 
-type Filter = (url: string, path: Operation) => boolean;
+export type GeneratorOptions = {
+  includeTags?: Filter;
+  includePath?: Filter;
+  excludeTags?: Filter;
+  excludePath?: Filter;
+  httpClientPath: string;
+};
 
-export class Generator {
-  sources: { [fileName: string]: ts.SourceFile } = {};
+class Generator {
+  options: GeneratorOptions;
   spec: Spec;
 
-  filter: Filter = () => true;
+  validPaths: { [pathName: string]: Path } = {};
 
-  importTmp = new Template<{ namedImports: string[]; moduleSpecifier: string }>(
-    `import {<%= namedImports.join(',') %>} from '<%=moduleSpecifier%>'`
-  );
+  depRefs = new Set<string>();
 
-  constructor(spec: Spec, filter: Filter) {
-    this.spec = spec;
-    this.spec = spec;
-    if (filter) {
-      this.filter = filter;
-    }
+  httpClientPath: string;
+
+  /**
+   * 过滤后的paths１‵４
+   * @returns
+   */
+  private getValidPaths(): { [pathName: string]: Path } {
+    const results: { [pathName: string]: Path } = {};
+    const includeTagFilter = normalizeTagFilter(this.options.includeTags);
+    const includePathFilter = normalizePathNameFilter(this.options.includePath);
+    const excludeTagFilter = normalizeTagFilter(
+      this.options.excludeTags || (() => false)
+    );
+    const excludePathFilter = normalizePathNameFilter(
+      this.options.excludePath || (() => false)
+    );
+    Object.entries(this.spec.paths).forEach(([pathName, path]) => {
+      Object.entries(path).forEach(([method, operation]) => {
+        const isMatch =
+          (includePathFilter(pathName, operation) ||
+            includeTagFilter(pathName, operation)) &&
+          !(
+            excludePathFilter(pathName, operation) ||
+            excludeTagFilter(pathName, operation)
+          );
+        if (isMatch) {
+          if (!results[pathName]) {
+            results[pathName] = {};
+          }
+          Object.assign(results[pathName], {
+            [method]: operation,
+          });
+        }
+      });
+    });
+    return results;
   }
 
-  generateApiAst(swaggerUrl: string, method: string, operation: Operation) {
-    const { operationId } = operation;
-    if (!operationId) {
-      console.error(
-        "有不包含operationId的接口，请上报swagger文档，以便尽快完善swagger-go"
-      );
+  /**
+   * 遍历过滤依赖的ref
+   * @param object
+   * @returns
+   */
+  private parseDepsRef(object: any) {
+    if (typeof object !== "object") {
       return;
     }
+    if (object.$ref) {
+      this.depRefs.add(object.$ref);
+      const refSchema = getRefedSchema(this.spec, object.$ref);
+      this.parseDepsRef(refSchema);
+      return;
+    }
+    Object.values(object).forEach((subVal) => {
+      this.parseDepsRef(subVal);
+    });
+  }
 
-    const fileName = createApiFileName(operationId);
+  constructor(spec: Spec, options: GeneratorOptions) {
+    this.spec = spec;
+    this.options = options;
+    this.validPaths = this.getValidPaths();
+    this.parseDepsRef(this.validPaths);
+    this.httpClientPath = options.httpClientPath;
+  }
+
+  generate(): ts.SourceFile[] {
+    return [this.generateOperations(), this.generateDefinitions()];
+  }
+
+  generateOperations(): ts.SourceFile {
     const statements: ts.Statement[] = [];
-
-    const jsDocTags: ts.Node[] = [];
-    const jsDoc = factory.createJSDocComment(operation.description || "");
-
-    const importStatements = [
-      this.importTmp.generate({
-        namedImports: ["httpClient"],
-        moduleSpecifier: "../config",
-      }),
-    ];
-    let urlNode = parseSwaggerPathTemplate(trimQuery(swaggerUrl));
-    const parameters = operation.parameters;
-    const parametersAst: ts.ParameterDeclaration[] = [];
-
-    const optionsProperties: ts.Node[] = [];
-    if (parameters && parameters.length) {
-      const group = _.groupBy(parameters, "in");
-      if (group.path) {
-        const pathParameters = group.path as PathParameter[];
-        pathParameters.forEach((param) => {
-          parametersAst.push(createPathParameterAst(param));
-          jsDocTags.push(
-            factory.createJSDocParameterTag(
-              undefined,
-              ts.createIdentifier(param.name),
-              false,
-              undefined,
-              true,
-              param.description
-            )
-          );
-        });
-      }
-
-      if (group.query) {
-        const queryParameters = group.query as QueryParameter[];
-        const queryInterfaceName = _.upperFirst(operationId + "Query");
-        const queryInterfaceNode = ts.createInterfaceDeclaration(
-          undefined,
-          [ts.createModifier(ts.SyntaxKind.ExportKeyword)],
-          ts.createIdentifier(queryInterfaceName),
-          undefined,
-          undefined,
-          queryParameters.map((parameter) => {
-            return ts.createPropertySignature(
-              undefined,
-              ts.createStringLiteral(parameter.name),
-              createQuestionToken(parameter),
-              createTypeNode(parameter),
-              undefined
-            );
-          })
-        );
-        jsDocTags.push(
-          factory.createJSDocParameterTag(
-            undefined,
-            ts.createIdentifier("query"),
-            false,
-            factory.createJSDocTypeExpression(
-              ts.createTypeReferenceNode(queryInterfaceName, [])
-            ),
-          )
-        );
-        statements.unshift(queryInterfaceNode);
-        parametersAst.push(
-          ts.createParameter(
-            undefined,
-            undefined,
-            undefined,
-            "query",
-            undefined,
-            ts.createTypeReferenceNode(queryInterfaceName, [])
-          )
-        );
-        optionsProperties.push(
-          ts.createShorthandPropertyAssignment(
-            ts.createIdentifier("query"),
-            undefined
-          )
-        );
-      }
-
-      if (group.body) {
-        const bodyParameter = group.body[0] as BodyParameter;
-        let typeNode: ts.TypeNode = ts.createKeywordTypeNode(
-          ts.SyntaxKind.AnyKeyword
-        );
-        if (bodyParameter.schema) {
-          const info = this.createSchemaTypeInfo(
-            fileName,
-            bodyParameter.schema
-          );
-          typeNode = info.typeNode;
-          importStatements.unshift(...info.depImports);
-        }
-
-        jsDocTags.push(
-          factory.createJSDocParameterTag(
-            undefined,
-            ts.createIdentifier(bodyParameter.name),
-            false,
-            factory.createJSDocTypeExpression(typeNode),
-            true,
-          )
-        );
-
-        parametersAst.push(
-          ts.createParameter(
-            undefined,
-            undefined,
-            undefined,
-            bodyParameter.name,
-            createQuestionToken(bodyParameter),
-            typeNode
-          )
-        );
-
-        optionsProperties.push(
-          ts.createPropertyAssignment(
-            ts.createIdentifier('body'),
-            ts.createIdentifier(bodyParameter.name)
-          )
-        );
-      }
-
-      let returnTypeNode: ts.TypeNode = ts.createKeywordTypeNode(
-        ts.SyntaxKind.AnyKeyword
-      );
-      const successResponse = operation.responses["200"];
-      if (successResponse) {
-        let resSchema = (successResponse as Response).schema;
-        if (!resSchema) {
-          resSchema = {
-            $ref: (successResponse as Reference).$ref,
-          };
-        }
-        const info = this.createSchemaTypeInfo(fileName, resSchema);
-        returnTypeNode = info.typeNode;
-        importStatements.unshift(...info.depImports);
-      }
-
-      const args: ts.Expression[] = [urlNode];
-      if (optionsProperties.length) {
-        args.push(ts.createObjectLiteral(optionsProperties as ts.PropertyAssignment[]));
-      }
-      statements.unshift(
-        ...importStatements,
-      );
-      statements.push(
-        factory.createJSDocComment(
-          operation.summary,
-          ts.createNodeArray(jsDocTags as any)
-        ) as any,
-        createHttpInvokeDeclaration(
-          operationId,
-          parametersAst,
-          returnTypeNode,
+    const usedTypeNames = new Set<string>([]);
+    Object.entries(this.validPaths).forEach(([pathName, path]) => {
+      Object.entries(path).forEach(([method, operation]) => {
+        const gOperation = new GOperation({
+          pathName,
           method,
-          args
+          operation,
+          spec: this.spec,
+        });
+        gOperation.usedTypeNames().forEach((name) => usedTypeNames.add(name));
+        const statement = factory.createVariableStatement(
+          [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+          factory.createVariableDeclarationList([
+            factory.createVariableDeclaration(
+              factory.createIdentifier(gOperation.getId()!),
+              undefined,
+              undefined,
+              factory.createArrowFunction(
+                undefined,
+                undefined,
+                gOperation.getParameterDeclarations(),
+                gOperation.getReturnType(),
+                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                gOperation.getBlock()
+              )
+            ),
+          ])
+        );
+        addJSDocComment(statement, gOperation.getJsDoc());
+        statements.push(statement);
+      });
+    });
+
+    statements.unshift(
+      factory.createImportDeclaration(
+        undefined,
+        undefined,
+        factory.createImportClause(
+          false,
+          factory.createIdentifier("httpClient"),
+          undefined
+        ),
+        factory.createStringLiteral(this.httpClientPath)
+      )
+    );
+
+    if (usedTypeNames.size > 0) {
+      statements.unshift(
+        factory.createImportDeclaration(
+          undefined,
+          undefined,
+          factory.createImportClause(
+            false,
+            undefined,
+            factory.createNamedImports(
+              [...this.depRefs]
+                .map((ref) => getRefTypeName(ref))
+                .filter((typeName) => usedTypeNames.has(typeName))
+                .map((typeName) =>
+                  factory.createImportSpecifier(
+                    false,
+                    undefined,
+                    factory.createIdentifier(typeName)
+                  )
+                )
+            )
+          ),
+          factory.createStringLiteral("./definitions")
         )
       );
-      let file = ts.createSourceFile(fileName, "", ts.ScriptTarget.Latest);
-      file = ts.updateSourceFileNode(file, statements);
-      this.sources[fileName] = file;
     }
+    const sourceFile = factory.createSourceFile(
+      statements,
+      factory.createToken(ts.SyntaxKind.EndOfFileToken),
+      ts.NodeFlags.None
+    );
+    sourceFile.fileName = "api.ts";
+    return sourceFile;
   }
 
-  createSchemaTypeInfo(fileName: string, schema: Schema) {
-    const schemaGenerator = new SchemaGenerator(this.sources, this.spec);
-    const { node, dependencies } = schemaGenerator.createSchemaTypeDesc(schema);
-    this.sources = Object.assign(this.sources, schemaGenerator.sources);
-    const typeNode = node as ts.TypeNode;
-    const depImports = dependencies.map((defFileName) => {
-      const relativeFile = path.posix.relative(path.posix.dirname(fileName), defFileName);
-      const name = path.posix.basename(defFileName, ".ts");
-      return this.importTmp.generate({
-        namedImports: [name],
-        moduleSpecifier: relativeFile.replace(/\.ts$/g, ""),
-      });
-    });
-    return {
-      typeNode,
-      depImports,
-    };
-  }
-
-  generate() {
-    Object.entries(this.spec.paths)
-      .forEach(([url, swaggerPath]) => {
-        this.generatePathAst(url, swaggerPath);
-      });
-  }
-
-  generatePathAst(swaggerApiUrl: string, swaggerPath: Path) {
-    Object.keys(swaggerPath).forEach((method) => {
-      if (["$ref", "parameters"].includes(method)) {
-        return;
+  /**
+   * 将swagger中类型定义生成文件
+   * @returns
+   */
+  generateDefinitions(): ts.SourceFile {
+    const statements: ts.Statement[] = [];
+    this.depRefs.forEach((ref) => {
+      const typeAliasName = getRefTypeName(ref);
+      const swaggerSchema = getRefedSchema(this.spec, ref);
+      const schema = new GSchema(swaggerSchema);
+      const typeNode = schema.toTsType();
+      if (typeAliasName === "OrderPayLogDTO") {
+        console.log(ref, typeAliasName);
       }
+      /**
+       * 生成类型,如：
+       * type A = {
+       *    a: string;
+       * }
+       */
+      const typeAliasDeclaration = factory.createTypeAliasDeclaration(
+        undefined,
+        [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+        factory.createIdentifier(typeAliasName),
+        undefined,
+        typeNode
+      );
 
-      const operation = swaggerPath[method as Method] as Operation;
-      if (this.filter(swaggerApiUrl, operation)) {
-        this.generateApiAst(swaggerApiUrl, method, operation);
+      const comment = GSchema.createComment(swaggerSchema);
+      if (comment) {
+        addJSDocComment(typeAliasDeclaration, comment);
       }
+      statements.push(typeAliasDeclaration);
     });
+    const sourceFile = factory.createSourceFile(
+      statements,
+      factory.createToken(ts.SyntaxKind.EndOfFileToken),
+      ts.NodeFlags.None
+    );
+    sourceFile.fileName = "definitions.ts";
+    return sourceFile;
   }
 }
+
+export default Generator;
