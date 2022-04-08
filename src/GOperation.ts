@@ -270,7 +270,7 @@ class GOperation {
       ]);
     }
     if (this.formData.length) {
-      const formData = this.body[0];
+      const formData = this.formData[0];
       return factory.createObjectLiteralExpression([
         factory.createPropertyAssignment(
           factory.createIdentifier("formData"),
