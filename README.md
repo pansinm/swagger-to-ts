@@ -57,6 +57,12 @@ module.exports = {
       includePath: /api/,
       excludeTags: "tag1,tag2",
       includeTags: () => true,
+      // 重命名接口，注意需要拼接basePath
+      rename: {
+        '/api/order': {
+          get: 'queryOrder'
+        }
+      }
     },
     {
       swagger: "swagger2.json",

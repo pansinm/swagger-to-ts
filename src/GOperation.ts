@@ -22,6 +22,7 @@ import {
 interface Options {
   method: string;
   pathName: string;
+  overrideOperationId?: string;
   operation: SwaggerOperation;
   spec: Spec;
 }
@@ -35,13 +36,14 @@ class GOperation {
   private path: PathParameter[] = [];
   private formData: FormDataParameter[] = [];
   private query: QueryParameter[] = [];
+  private overrideOperationId?: string;
 
   parameterDeclarations: ts.ParameterDeclaration[];
   jsDoc: ts.JSDoc;
   block: ts.Block;
   returnType: ts.TypeNode;
 
-  constructor({ method, pathName, operation, spec }: Options) {
+  constructor({ method, pathName, operation, spec, overrideOperationId }: Options) {
     this.pathName = pathName;
     this.operation = operation;
     this.spec = spec;
@@ -51,6 +53,7 @@ class GOperation {
     this.jsDoc = this.generateJsDoc();
     this.block = this.generateBlock();
     this.returnType = this.generateReturnType();
+    this.overrideOperationId = overrideOperationId;
   }
 
   usedTypeNames() {
@@ -82,7 +85,7 @@ class GOperation {
    * @returns
    */
   getId() {
-    return this.operation.operationId;
+    return this.overrideOperationId || this.operation.operationId;
   }
 
   /**

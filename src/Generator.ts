@@ -9,6 +9,7 @@ import {
   getRefTypeName,
   normalizePathNameFilter,
   normalizeTagFilter,
+  trimQuery,
 } from "./util";
 
 export type GeneratorOptions = {
@@ -17,6 +18,11 @@ export type GeneratorOptions = {
   excludeTags?: Filter;
   excludePath?: Filter;
   httpClientPath: string;
+  rename?: {
+    [pathName: string]: {
+      [method: string]: string;
+    };
+  };
 };
 
 class Generator {
@@ -65,7 +71,8 @@ class Generator {
     return results;
   }
 
-  private traversedRef = new Set<string>()
+  private traversedRef = new Set<string>();
+  rename: GeneratorOptions['rename'];
   /**
    * 遍历过滤依赖的ref
    * @param object
@@ -90,12 +97,14 @@ class Generator {
     });
   }
 
+
   constructor(spec: Spec, options: GeneratorOptions) {
     this.spec = spec;
     this.options = options;
     this.validPaths = this.getValidPaths();
     this.parseDepsRef(this.validPaths);
     this.httpClientPath = options.httpClientPath;
+    this.rename = options.rename;
   }
 
   generate(): ts.SourceFile[] {
@@ -121,9 +130,12 @@ class Generator {
     const usedTypeNames = new Set<string>([]);
     Object.entries(this.validPaths).forEach(([pathName, path]) => {
       Object.entries(path).forEach(([method, operation]) => {
+        const fullPath = trimQuery((this.spec.basePath || '') + pathName);
+        const overrideOperationId = this.rename?.[fullPath]?.[method];
         const gOperation = new GOperation({
           pathName,
           method,
+          overrideOperationId,
           operation,
           spec: this.spec,
         });
