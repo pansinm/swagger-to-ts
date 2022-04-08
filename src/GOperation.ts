@@ -43,7 +43,13 @@ class GOperation {
   block: ts.Block;
   returnType: ts.TypeNode;
 
-  constructor({ method, pathName, operation, spec, overrideOperationId }: Options) {
+  constructor({
+    method,
+    pathName,
+    operation,
+    spec,
+    overrideOperationId,
+  }: Options) {
     this.pathName = pathName;
     this.operation = operation;
     this.spec = spec;
@@ -211,11 +217,14 @@ class GOperation {
             tsv: "\t",
             pipes: "|",
           };
-          value = factory.createCallExpression(
-            factory.createPropertyAccessExpression(
+
+          value = factory.createCallChain(
+            factory.createPropertyAccessChain(
               factory.createIdentifier(escapeVar(item.name)),
+              factory.createToken(ts.SyntaxKind.QuestionDotToken),
               factory.createIdentifier("join")
             ),
+            undefined,
             undefined,
             [factory.createStringLiteral(sep[item.collectionFormat])]
           );
