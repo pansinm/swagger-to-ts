@@ -186,7 +186,7 @@ class GOperation {
    * @returns
    */
   private createUrlNode() {
-    const basePath = this.spec.basePath || ''
+    const basePath = this.spec.basePath || "";
     const pathName = basePath + trimQuery(this.pathName);
     let pathNameNode: ts.StringLiteral | ts.TemplateExpression =
       factory.createStringLiteral(pathName);
@@ -196,7 +196,7 @@ class GOperation {
 
     if (this.query.length) {
       const queryProperties = this.query.map((item, index) => {
-        let stringifyVal: ts.Expression = factory.createIdentifier(
+        let value: ts.Expression = factory.createIdentifier(
           escapeVar(item.name)
         );
 
@@ -208,7 +208,7 @@ class GOperation {
             tsv: "\t",
             pipes: "|",
           };
-          stringifyVal = factory.createCallExpression(
+          value = factory.createCallExpression(
             factory.createPropertyAccessExpression(
               factory.createIdentifier(escapeVar(item.name)),
               factory.createIdentifier("join")
@@ -217,10 +217,13 @@ class GOperation {
             [factory.createStringLiteral(sep[item.collectionFormat])]
           );
         }
-        return factory.createPropertyAssignment(
-          factory.createIdentifier(escapeVar(item.name)),
-          stringifyVal
-        );
+
+        const paramName = escapeVar(item.name);
+        const key =
+          item.name === paramName
+            ? factory.createIdentifier(item.name)
+            : factory.createStringLiteral(item.name);
+        return factory.createPropertyAssignment(key, value);
       });
 
       const stringifyArgs = [
@@ -342,7 +345,9 @@ class GOperation {
     const tags: ts.JSDocTag[] = parmDeclarations.map((declare) => {
       const name = (declare.name as ts.Identifier).escapedText.toString();
       const param = this.operation.parameters?.find(
-        (p) => (p as SwaggerParameter).name === name
+        (p) =>
+          (p as SwaggerParameter).name === name ||
+          escapeVar((p as SwaggerParameter).name) === name
       ) as SwaggerParameter;
       return factory.createJSDocParameterTag(
         undefined,
