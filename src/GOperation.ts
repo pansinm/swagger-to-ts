@@ -60,13 +60,13 @@ class GOperation {
     this.operation = operation;
     this.spec = spec;
     this.method = method;
+    this.overrideOperationId = overrideOperationId;
+    this.rewritePath = rewritePath || {}
     this.groupParameters();
     this.parameterDeclarations = this.generateParameterDeclarations();
     this.jsDoc = this.generateJsDoc();
     this.block = this.generateBlock();
     this.returnType = this.generateReturnType();
-    this.overrideOperationId = overrideOperationId;
-    this.rewritePath = rewritePath || {}
   }
 
   usedTypeNames() {
