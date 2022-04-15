@@ -38,6 +38,7 @@ class Generator {
 
   httpClientPath: string;
 
+
   /**
    * 过滤后的paths１‵４
    * @returns
@@ -141,6 +142,7 @@ class Generator {
           overrideOperationId,
           operation,
           spec: this.spec,
+          rewritePath: this.options.rewritePath
         });
         gOperation.usedTypeNames().forEach((name) => usedTypeNames.add(name));
         const statement = factory.createVariableStatement(
