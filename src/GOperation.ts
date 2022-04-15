@@ -1,4 +1,5 @@
 import _ from "lodash";
+import path from 'path/posix';
 import {
   Parameter as SwaggerParameter,
   Operation as SwaggerOperation,
@@ -25,6 +26,9 @@ interface Options {
   overrideOperationId?: string;
   operation: SwaggerOperation;
   spec: Spec;
+  rewritePath?: {
+    [match: string]: string;
+  }
 }
 
 class GOperation {
@@ -42,6 +46,7 @@ class GOperation {
   jsDoc: ts.JSDoc;
   block: ts.Block;
   returnType: ts.TypeNode;
+  rewritePath: NonNullable<Options['rewritePath']>
 
   constructor({
     method,
@@ -49,6 +54,7 @@ class GOperation {
     operation,
     spec,
     overrideOperationId,
+    rewritePath
   }: Options) {
     this.pathName = pathName;
     this.operation = operation;
@@ -60,6 +66,7 @@ class GOperation {
     this.block = this.generateBlock();
     this.returnType = this.generateReturnType();
     this.overrideOperationId = overrideOperationId;
+    this.rewritePath = rewritePath || {}
   }
 
   usedTypeNames() {
@@ -190,13 +197,23 @@ class GOperation {
     });
   }
 
+  private rewritePathName(pathName: string) {
+    for (let [matcher, replacer] of Object.entries(this.rewritePath)) {
+      const reg = new RegExp(matcher);
+      if (reg.test(pathName)) {
+        return pathName.replace(reg, replacer);
+      }
+    }
+    return pathName;
+  }
+
   /**
    * 拼接url
    * @returns
    */
   private createUrlNode() {
-    const basePath = this.spec.basePath || "";
-    const pathName = basePath + trimQuery(this.pathName);
+    let pathName = path.join(this.spec.basePath || '', trimQuery(this.pathName));
+    pathName = this.rewritePathName(pathName);
     let pathNameNode: ts.StringLiteral | ts.TemplateExpression =
       factory.createStringLiteral(pathName);
     if (this.path.length) {

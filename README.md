@@ -62,6 +62,10 @@ module.exports = {
         '/api/order': {
           get: 'queryOrder'
         }
+      },
+      // 重写路径
+      rewritePath: {
+        '^/order': '/api/order'
       }
     },
     {

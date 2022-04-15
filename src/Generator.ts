@@ -23,6 +23,9 @@ export type GeneratorOptions = {
       [method: string]: string;
     };
   };
+  rewritePath?: {
+    [match: string]: string;
+  }
 };
 
 class Generator {
