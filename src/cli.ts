@@ -43,6 +43,10 @@ interface GenerateOptions extends Partial<GeneratorOptions> {
   pathOrUrl: string;
   outputDir: string;
   httpClientOutputDir: string;
+  /**
+   * 处理前修正swagger
+   */
+  fixSpec?: (spec: Spec) => Spec | Promise<Spec>;
 }
 
 async function getSwagger(pathOrUrl: string) {
@@ -63,7 +67,10 @@ async function generate({
   httpClientOutputDir,
   ...rest
 }: GenerateOptions) {
-  const spec = await getSwagger(pathOrUrl);
+  let spec = await getSwagger(pathOrUrl);
+  if (rest.fixSpec) {
+    await rest.fixSpec(spec);
+  }
   let httpClientPath = path
     .relative(
       path.resolve(outputDir),
@@ -98,8 +105,11 @@ async function run() {
           ...swagger,
           pathOrUrl: swagger.swagger,
           outputDir: swagger.output,
-          httpClientOutputDir: swagger.httpClientOutput || config.httpClientOutput || swagger.output,
-        })
+          httpClientOutputDir:
+            swagger.httpClientOutput ||
+            config.httpClientOutput ||
+            swagger.output,
+        });
       }
     } else {
       const pathOrUrl = options.swagger;
