@@ -58,6 +58,18 @@ export function matchAll(reg: RegExp, str: string) {
   return matches;
 }
 
+export function printNode(node: ts.Node) {
+  const printer = ts.createPrinter();
+  const output = printer
+    .printNode(
+      ts.EmitHint.Unspecified,
+      node,
+      ts.createSourceFile("", "", ts.ScriptTarget.ESNext)
+    )
+    .trim();
+  return output;
+}
+
 /**
  * 将swagger路径模板解析成字符串AST
  * @param pathTemplate swagger里面路径模板，类似于 /abc/{param}
@@ -141,15 +153,7 @@ export function normalizePathNameFilter(filter?: Filter): FunctionFilter {
  * @returns
  */
 export function addJSDocComment<T extends ts.Node>(node: T, jsDoc: ts.JSDoc) {
-  const printer = ts.createPrinter();
-  const output = printer
-    .printNode(
-      ts.EmitHint.Unspecified,
-      jsDoc,
-      ts.createSourceFile("", "", ts.ScriptTarget.ESNext)
-    )
-    .trim()
-    .slice(2, -2);
+  const output = printNode(jsDoc).slice(2, -2);
   return ts.addSyntheticLeadingComment<T>(
     node,
     ts.SyntaxKind.MultiLineCommentTrivia,
