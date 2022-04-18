@@ -38,6 +38,7 @@
     "swagger-to-ts": "dist/cli.js"
   },
   "files": [
+    "screenshot",
     "config",
     "dist"
   ]

@@ -1,6 +1,15 @@
 # @upace/swagger-to-ts
 
-通过 swagger 文档生成 TypeScript 代码
+通过 swagger 文档生成 TypeScript 代码，生成代码结构如下：
+
+![](./screenshot/2022-04-18_16-09.png)
+
+国内用户可访问 [gitee 镜像](https://gitee.com/upace/swagger-to-ts)
+
+## 特性
+1. 尽可能兼容不规范的文档，definitions 使用中文或其他特殊符号定义时，转换成拼音和下划线
+2. 不绑定特定 http client，内部实现了一个通用的 `httpClient`，外部可通过 `httpClient.handleRequest` 处理请求
+3. 尽可能详尽的注释，有注释的字段都会生成 `jsdoc` 
 
 ## 使用
 
@@ -12,7 +21,7 @@ swagger-to-ts -s http://yourhost/api-docs -o output
 
 ## 实现 httpClient
 
-生存的代码使用自定义 httpClient，你只需要在调用接口前拦截处理，以下是示例
+生成的代码使用自定义 httpClient，不会发送请求。在调用接口前你需要拦截处理，以下是示例
 
 ```ts
 import httpClient from "./output/httpClient";
@@ -31,13 +40,21 @@ httpClient.handleRequest(async ({ method, url, body }) => {
 
 ```
 Options:
-  -s, --swagger [swagger]              输入url
-  -o, --output [output]            输入目录
-  -h, --http-client-output [path]  httpClient输出路径，默认存于输出目录
-  --help                           display help for command
+  -s, --swagger [swagger]       swagger路径或url
+  -o, --output [output]         输入目录
+  --exclude-tags [excludeTags]  排除指定tag，逗号分割
+  --include-tags [includeTags]  只生成特定tag的接口,逗号分割
+  --exclude-path [excludePath]  排除特定路径，支持正则
+  --include-path [includePath]  只生存特定路径接口，支持正则
+  --http-client-output [path]   httpClient输出路径，默认存于输出目录
+  --config [config]             使用配置文件
+  -h, --help                    display help for command
 ```
 
 ## 使用 swagger.config.js
+
+除了使用命令行外，`swagger-to-ts` 还支持 `swagger.config.js` 进行更多配置
+
 
 ```bash
 swagger-to-ts --config swagger.config.js
