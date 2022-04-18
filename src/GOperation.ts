@@ -1,5 +1,5 @@
 import _ from "lodash";
-import path from 'path/posix';
+import path from "path/posix";
 import {
   Parameter as SwaggerParameter,
   Operation as SwaggerOperation,
@@ -28,7 +28,7 @@ interface Options {
   spec: Spec;
   rewritePath?: {
     [match: string]: string;
-  }
+  };
 }
 
 class GOperation {
@@ -46,7 +46,7 @@ class GOperation {
   jsDoc: ts.JSDoc;
   block: ts.Block;
   returnType: ts.TypeNode;
-  rewritePath: NonNullable<Options['rewritePath']>
+  rewritePath: NonNullable<Options["rewritePath"]>;
 
   constructor({
     method,
@@ -54,14 +54,14 @@ class GOperation {
     operation,
     spec,
     overrideOperationId,
-    rewritePath
+    rewritePath,
   }: Options) {
     this.pathName = pathName;
     this.operation = operation;
     this.spec = spec;
     this.method = method;
     this.overrideOperationId = overrideOperationId;
-    this.rewritePath = rewritePath || {}
+    this.rewritePath = rewritePath || {};
     this.groupParameters();
     this.parameterDeclarations = this.generateParameterDeclarations();
     this.jsDoc = this.generateJsDoc();
@@ -212,7 +212,10 @@ class GOperation {
    * @returns
    */
   private createUrlNode() {
-    let pathName = path.join(this.spec.basePath || '', trimQuery(this.pathName));
+    let pathName = path.join(
+      this.spec.basePath || "",
+      trimQuery(this.pathName)
+    );
     pathName = this.rewritePathName(pathName);
     let pathNameNode: ts.StringLiteral | ts.TemplateExpression =
       factory.createStringLiteral(pathName);
@@ -333,7 +336,8 @@ class GOperation {
   }
 
   private getSuccessResponse() {
-    return this.operation.responses["200"] as Response;
+    const responses = this.operation.responses;
+    return (responses['200'] || responses['default']) as Response;
   }
 
   /**
@@ -395,11 +399,12 @@ class GOperation {
         )
       );
     }
+    const successResponse = this.getSuccessResponse();
     tags.push(
       factory.createJSDocReturnTag(
         undefined,
         undefined,
-        this.getSuccessResponse().description
+        successResponse ? successResponse.description : ""
       )
     );
     return factory.createJSDocComment(
