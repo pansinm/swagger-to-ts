@@ -4,32 +4,32 @@ import { printNode } from "../util";
 import swagger from "./fixtures/swagger.json";
 describe("GSchema", () => {
   it("正确生成枚举类型", () => {
-    const schema = new GSchema(
+    const gSchema = new GSchema(
       swagger.definitions.Pet.properties.status as Schema
     );
-    expect(printNode(schema.toTsType())).toBe(
+    expect(printNode(gSchema.getTsType())).toBe(
       '"available" | "pending" | "sold"'
     );
   });
   it("number和integer都会生成number类型", () => {
-    const schemaN = new GSchema({ type: "number" });
-    const schemaI = new GSchema({ type: "integer" });
-    expect(printNode(schemaN.toTsType())).toBe("number");
-    expect(printNode(schemaI.toTsType())).toBe("number");
+    const gSschemaN = new GSchema({ type: "number" });
+    const gSchemaI = new GSchema({ type: "integer" });
+    expect(printNode(gSschemaN.getTsType())).toBe("number");
+    expect(printNode(gSchemaI.getTsType())).toBe("number");
   });
   it("能够正确生成array类型", () => {
-    const schema = new GSchema(
+    const gSchema = new GSchema(
       swagger.definitions.Pet.properties.tags as Schema
     );
-    expect(printNode(schema.toTsType())).toBe("Tag[]");
+    expect(printNode(gSchema.getTsType())).toBe("Tag[]");
   });
   it("正确生成ref类型，不合法字符转换成下划线", () => {
-    const schema = new GSchema({ $ref: "#/definitions/Test." });
-    expect(printNode(schema.toTsType())).toBe("Test_");
+    const gSchema = new GSchema({ $ref: "#/definitions/Test." });
+    expect(printNode(gSchema.getTsType())).toBe("Test_");
   });
   it("正确生成object，并为字段添加注释", () => {
-    const schema = new GSchema(swagger.definitions.Order as Schema);
-    expect(printNode(schema.toTsType())).toBe(`{
+    const gSchema = new GSchema(swagger.definitions.Order as Schema);
+    expect(printNode(gSchema.getTsType())).toBe(`{
     id?: number;
     petId?: number;
     quantity?: number;
@@ -48,12 +48,12 @@ describe("GSchema", () => {
   });
 
   it("如果schema不存在，返回unknown类型", () => {
-    const schema = new GSchema(undefined);
-    expect(printNode(schema.toTsType())).toBe("unknown");
+    const gSchema = new GSchema(undefined);
+    expect(printNode(gSchema.getTsType())).toBe("unknown");
   });
 
   it("如果类型是file，返回any类型", () => {
-    const schema = new GSchema({ type: "file" });
-    expect(printNode(schema.toTsType())).toBe("any");
+    const gSchema = new GSchema({ type: "file" });
+    expect(printNode(gSchema.getTsType())).toBe("any");
   });
 });

@@ -14,8 +14,10 @@ type SourceFileMap = {
 
 export class GSchema {
   private schema?: SwaggerSchema;
+  private tsTypeNode: ts.TypeNode;
   constructor(swaggerSchema?: SwaggerSchema) {
     this.schema = swaggerSchema;
+    this.tsTypeNode = this.toTsType();
   }
 
   static createComment(swaggerSchema?: SwaggerSchema) {
@@ -103,7 +105,7 @@ export class GSchema {
     Object.keys(properties).forEach((key) => {
       const subSwaggerSchema = properties[key];
       const subSchema = new GSchema(subSwaggerSchema);
-      const subTypeNode = subSchema.toTsType();
+      const subTypeNode = subSchema.getTsType();
 
       const isRequired = required.includes(key);
       const questionToken = isRequired
@@ -132,18 +134,22 @@ export class GSchema {
     if (this.schema?.items) {
       const item = this.schema.items as SwaggerSchema;
       const schema = new GSchema(item);
-      return factory.createArrayTypeNode(schema.toTsType());
+      return factory.createArrayTypeNode(schema.getTsType());
     }
     return factory.createArrayTypeNode(
       factory.createKeywordTypeNode(SyntaxKind.AnyKeyword)
     );
   }
 
-  toTsType(): ts.TypeNode {
+  getTsType(): ts.TypeNode {
+    return this.tsTypeNode;
+  }
+
+  private toTsType(): ts.TypeNode {
     if (!this.schema) {
       return this.toUnknownType();
     }
-    
+
     if (this.schema.$ref) {
       return this.toRefType();
     }

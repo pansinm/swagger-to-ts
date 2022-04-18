@@ -25,7 +25,7 @@ export type GeneratorOptions = {
   };
   rewritePath?: {
     [match: string]: string;
-  }
+  };
 };
 
 class Generator {
@@ -38,9 +38,8 @@ class Generator {
 
   httpClientPath: string;
 
-
   /**
-   * 过滤后的paths１‵４
+   * 过滤后的paths
    * @returns
    */
   private getValidPaths(): { [pathName: string]: Path } {
@@ -76,7 +75,7 @@ class Generator {
   }
 
   private traversedRef = new Set<string>();
-  rename: GeneratorOptions['rename'];
+  rename: GeneratorOptions["rename"];
   /**
    * 遍历过滤依赖的ref
    * @param object
@@ -100,7 +99,6 @@ class Generator {
       this.parseDepsRef(subVal);
     });
   }
-
 
   constructor(spec: Spec, options: GeneratorOptions) {
     this.spec = spec;
@@ -134,7 +132,7 @@ class Generator {
     const usedTypeNames = new Set<string>([]);
     Object.entries(this.validPaths).forEach(([pathName, path]) => {
       Object.entries(path).forEach(([method, operation]) => {
-        const fullPath = trimQuery((this.spec.basePath || '') + pathName);
+        const fullPath = trimQuery((this.spec.basePath || "") + pathName);
         const overrideOperationId = this.rename?.[fullPath]?.[method];
         const gOperation = new GOperation({
           pathName,
@@ -142,7 +140,7 @@ class Generator {
           overrideOperationId,
           operation,
           spec: this.spec,
-          rewritePath: this.options.rewritePath
+          rewritePath: this.options.rewritePath,
         });
         gOperation.usedTypeNames().forEach((name) => usedTypeNames.add(name));
         const statement = factory.createVariableStatement(
@@ -248,7 +246,7 @@ class Generator {
       const typeAliasName = getRefTypeName(ref);
       const swaggerSchema = getRefedSchema(this.spec, ref);
       const schema = new GSchema(swaggerSchema);
-      const typeNode = schema.toTsType();
+      const typeNode = schema.getTsType();
       /**
        * 生成类型,如：
        * type A = {

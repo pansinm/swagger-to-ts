@@ -179,16 +179,16 @@ class GOperation {
   private generateParameterDeclarations(): ts.ParameterDeclaration[] {
     return [
       ...this.path.map((param) =>
-        new GParameter(param as SwaggerParameter).getParameterDeclaration()
+        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
       ),
       ...this.body.map((param) =>
-        new GParameter(param as SwaggerParameter).getParameterDeclaration()
+        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
       ),
       ...this.formData.map((param) =>
-        new GParameter(param as SwaggerParameter).getParameterDeclaration()
+        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
       ),
       ...this.query.map((param) =>
-        new GParameter(param as SwaggerParameter).getParameterDeclaration()
+        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
       ),
     ].sort((a, b) => {
       const aWeight = +!!a.initializer + (!!a.questionToken ? 2 : 0);
@@ -326,7 +326,7 @@ class GOperation {
     const success = this.getSuccessResponse();
     if (success?.schema) {
       const schema = new GSchema(success.schema);
-      returnType = schema.toTsType();
+      returnType = schema.getTsType();
     }
 
     return factory.createTypeReferenceNode(
@@ -337,7 +337,7 @@ class GOperation {
 
   private getSuccessResponse() {
     const responses = this.operation.responses;
-    return (responses['200'] || responses['default']) as Response;
+    return (responses["200"] || responses["default"]) as Response;
   }
 
   /**

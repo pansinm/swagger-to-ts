@@ -1,48 +1,59 @@
 import {
   BaseSchema,
   BodyParameter,
-  Parameter as SwaggerParameter,
-  Schema as SwaggerSchema,
+  FormDataParameter,
+  Parameter,
+  QueryParameter,
+  Schema,
 } from "swagger-schema-official";
 import ts, { factory } from "typescript";
 import { GSchema } from "./GSchema";
 import { escapeVar } from "./util";
 class GParameter {
-  parameter: SwaggerParameter;
-  constructor(parameter: SwaggerParameter) {
+  private parameter: Parameter;
+  private tsTypeNode: ts.TypeNode;
+  private tsParameterDeclarationNode: ts.ParameterDeclaration;
+  constructor(parameter: Parameter) {
     this.parameter = parameter;
+    this.tsTypeNode = this.toTsType();
+    this.tsParameterDeclarationNode = this.toTsParameterDeclaration();
   }
 
-  private getBodyType() {
-    const parameter = this.parameter as BodyParameter;
-    const parameterSchema = new GSchema(parameter.schema);
-    return parameterSchema.toTsType();
+  getTsType() {
+    return this.tsTypeNode;
   }
 
-  toTsType() {
-    if (this.parameter.in === "body") {
-      return this.getBodyType();
+  getTsParameterDeclaration() {
+    return this.tsParameterDeclarationNode;
+  }
+
+  private toTsType() {
+    const schema = (this.parameter as BodyParameter).schema;
+    if (schema) {
+      const gSchema = new GSchema(schema);
+      return gSchema.getTsType();
     }
 
-    if (this.parameter.type === "file") {
+    if ((this.parameter as FormDataParameter).type === "file") {
       return factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
     }
 
-    const schema = new GSchema(this.parameter as SwaggerSchema);
-    return schema.toTsType();
+    const gSchema = new GSchema(this.parameter as Schema);
+    return gSchema.getTsType();
   }
 
-  getParameterDeclaration() {
+  private toTsParameterDeclaration() {
     const defaultVal = (this.parameter as BaseSchema).default;
-    const hasDefault = ['string', 'number'].includes(typeof defaultVal);
-    const questionToken = (this.parameter.required || hasDefault)
-      ? undefined
-      : factory.createToken(ts.SyntaxKind.QuestionToken);
+    const hasDefault = ["string", "number"].includes(typeof defaultVal);
+    const questionToken =
+      this.parameter.required || hasDefault
+        ? undefined
+        : factory.createToken(ts.SyntaxKind.QuestionToken);
     let initializer;
-    if (typeof defaultVal === 'string') {
+    if (typeof defaultVal === "string") {
       initializer = factory.createStringLiteral(defaultVal);
     }
-    if (typeof defaultVal === 'number') {
+    if (typeof defaultVal === "number") {
       initializer = factory.createNumericLiteral(defaultVal);
     }
     return factory.createParameterDeclaration(
@@ -51,7 +62,7 @@ class GParameter {
       undefined,
       factory.createIdentifier(escapeVar(this.parameter.name)),
       questionToken,
-      this.toTsType(),
+      this.getTsType(),
       initializer
     );
   }
