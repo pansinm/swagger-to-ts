@@ -261,7 +261,7 @@ class Generator {
         typeNode
       );
 
-      const comment = GSchema.createComment(swaggerSchema);
+      const comment = schema.jsDoc();
       if (comment) {
         addJSDocComment(typeAliasDeclaration, comment);
       }

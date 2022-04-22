@@ -40,12 +40,6 @@ describe("GSchema", () => {
     complete?: boolean;
 }`);
   });
-  it("createJSComment能够将schema中title和description生成注释", () => {
-    const jsdoc = GSchema.createComment(
-      swagger.definitions.Pet.properties.status as Schema
-    );
-    expect(printNode(jsdoc!)).toMatch("pet status in the store");
-  });
 
   it("如果schema不存在，返回unknown类型", () => {
     const gSchema = new GSchema(undefined);

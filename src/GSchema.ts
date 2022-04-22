@@ -137,7 +137,7 @@ export class GSchema {
         subTypeNode as TypeNode
       );
 
-      const comment = GSchema.createComment(subSwaggerSchema);
+      const comment = subSchema.jsDoc();
       if (comment) {
         addJSDocComment(propertyNode, comment);
       }
@@ -157,6 +157,23 @@ export class GSchema {
     return factory.createArrayTypeNode(
       factory.createKeywordTypeNode(SyntaxKind.AnyKeyword)
     );
+  }
+
+  jsDoc() {
+    if (!this.schema) {
+      return null;
+    }
+    if (this.schema.title || this.schema.description) {
+      const comments = [];
+      if (this.schema.title) {
+        comments.push(this.schema.title);
+      }
+      if (this.schema.description) {
+        comments.push(this.schema.description);
+      }
+      const jsDoc = factory.createJSDocComment(comments.join("\n"));
+      return jsDoc;
+    }
   }
 
   tsType(): ts.TypeNode {
