@@ -1,5 +1,5 @@
 import _ from "lodash";
-import path from "path/posix";
+import { posix as path } from "path";
 import {
   Parameter as SwaggerParameter,
   Operation as SwaggerOperation,
