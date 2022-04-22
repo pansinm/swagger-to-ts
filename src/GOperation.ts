@@ -326,7 +326,7 @@ class GOperation {
     const success = this.getSuccessResponse();
     if (success?.schema) {
       const schema = new GSchema(success.schema);
-      returnType = schema.getTsType();
+      returnType = schema.tsType();
     }
 
     return factory.createTypeReferenceNode(

@@ -13,7 +13,7 @@ export class GSchema {
   private tsTypeNode: ts.TypeNode;
   constructor(swaggerSchema?: SwaggerSchema) {
     this.schema = swaggerSchema;
-    this.tsTypeNode = this.toTsType();
+    this.tsTypeNode = this.genTsType();
   }
 
   static createComment(swaggerSchema?: SwaggerSchema) {
@@ -34,13 +34,13 @@ export class GSchema {
     return null;
   }
 
-  private toRefType() {
+  private genRefType() {
     const ref = this.schema?.$ref as string;
     const typeName = getRefTypeName(ref);
     return factory.createTypeReferenceNode(typeName, []);
   }
 
-  private toEnumType() {
+  private genEnumType() {
     const enumTypes = this.schema?.enum as string[];
     const unionNodes = enumTypes.map((literal) => {
       let literalNode;
@@ -61,34 +61,34 @@ export class GSchema {
     return factory.createUnionTypeNode(unionNodes);
   }
 
-  private toStringType() {
+  private genStringType() {
     if (this.schema?.enum && this.schema.enum.length) {
-      return this.toEnumType();
+      return this.genEnumType();
     }
 
     return factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword);
   }
 
-  private toNumberType() {
+  private genNumberType() {
     if (this.schema?.enum && this.schema.enum.length) {
-      return this.toEnumType();
+      return this.genEnumType();
     }
     return factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword);
   }
 
-  private toUnknownType() {
+  private genUnknownType() {
     return factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword);
   }
 
-  private toAnyType() {
+  private genAnyType() {
     return factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
   }
 
-  private toBooleanType() {
+  private genBooleanType() {
     return factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword);
   }
 
-  private toObjectType(): ts.TypeNode {
+  private genObjectType(): ts.TypeNode {
     const schema = this.schema;
     const additionalProperties = schema?.additionalProperties;
     // https://swagger.io/docs/specification/data-models/data-types/#additionalProperties
@@ -101,7 +101,7 @@ export class GSchema {
         factory.createIdentifier("Record"),
         [
           factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
-          new GSchema(additionalProperties).getTsType(),
+          new GSchema(additionalProperties).tsType(),
         ]
       );
     }
@@ -123,7 +123,7 @@ export class GSchema {
     Object.keys(properties).forEach((key) => {
       const subSwaggerSchema = properties[key];
       const subSchema = new GSchema(subSwaggerSchema);
-      const subTypeNode = subSchema.getTsType();
+      const subTypeNode = subSchema.tsType();
 
       const isRequired = required.includes(key);
       const questionToken = isRequired
@@ -148,50 +148,50 @@ export class GSchema {
     return factory.createTypeLiteralNode(nodes);
   }
 
-  private toArrayType() {
+  private genArrayType() {
     if (this.schema?.items) {
       const item = this.schema.items as SwaggerSchema;
       const schema = new GSchema(item);
-      return factory.createArrayTypeNode(schema.getTsType());
+      return factory.createArrayTypeNode(schema.tsType());
     }
     return factory.createArrayTypeNode(
       factory.createKeywordTypeNode(SyntaxKind.AnyKeyword)
     );
   }
 
-  getTsType(): ts.TypeNode {
+  tsType(): ts.TypeNode {
     return this.tsTypeNode;
   }
 
-  private toTsType(): ts.TypeNode {
+  private genTsType(): ts.TypeNode {
     if (!this.schema) {
-      return this.toUnknownType();
+      return this.genUnknownType();
     }
 
     if (this.schema.$ref) {
-      return this.toRefType();
+      return this.genRefType();
     }
 
     if (this.schema.type === "boolean") {
-      return this.toBooleanType();
+      return this.genBooleanType();
     }
 
     if (this.schema.type === "string") {
-      return this.toStringType();
+      return this.genStringType();
     }
 
     if (["number", "integer"].includes(this.schema.type as string)) {
-      return this.toNumberType();
+      return this.genNumberType();
     }
 
     if (this.schema.type === "object") {
-      return this.toObjectType();
+      return this.genObjectType();
     }
 
     if (this.schema.type === "array") {
-      return this.toArrayType();
+      return this.genArrayType();
     }
 
-    return this.toAnyType();
+    return this.genAnyType();
   }
 }

@@ -246,7 +246,7 @@ class Generator {
       const typeAliasName = getRefTypeName(ref);
       const swaggerSchema = getRefedSchema(this.spec, ref);
       const schema = new GSchema(swaggerSchema);
-      const typeNode = schema.getTsType();
+      const typeNode = schema.tsType();
       /**
        * 生成类型,如：
        * type A = {

@@ -31,7 +31,7 @@ class GParameter {
     const schema = (this.parameter as BodyParameter).schema;
     if (schema) {
       const gSchema = new GSchema(schema);
-      return gSchema.getTsType();
+      return gSchema.tsType();
     }
 
     if ((this.parameter as FormDataParameter).type === "file") {
@@ -39,7 +39,7 @@ class GParameter {
     }
 
     const gSchema = new GSchema(this.parameter as Schema);
-    return gSchema.getTsType();
+    return gSchema.tsType();
   }
 
   private toTsParameterDeclaration() {
