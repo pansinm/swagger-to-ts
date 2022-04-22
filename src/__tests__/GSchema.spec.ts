@@ -56,4 +56,30 @@ describe("GSchema", () => {
     const gSchema = new GSchema({ type: "file" });
     expect(printNode(gSchema.getTsType())).toBe("any");
   });
+
+  it("如果schema type 为 object，没有其他数据时，返回 Record<string, any>", () => {
+    const gSchema = new GSchema({ type: "object" });
+    expect(printNode(gSchema.getTsType())).toBe("Record<string, any>");
+  });
+  it("如果 additionalProperties 为 true 时，返回 Record<string, any>", () => {
+    const gSchema = new GSchema({ type: "object", additionalProperties: true });
+    expect(printNode(gSchema.getTsType())).toBe("Record<string, any>");
+  });
+  it("如果 additionalProperties 为 空对象时，返回 Record<string, any>", () => {
+    const gSchema = new GSchema({ type: "object", additionalProperties: true });
+    expect(printNode(gSchema.getTsType())).toBe("Record<string, any>");
+  });
+  it("如果 additionalProperties 为schema时，返回 Record<string, schema类型>", () => {
+    // 嵌套
+    const gSchema = new GSchema({
+      type: "object",
+      additionalProperties: {
+        type: "object",
+        additionalProperties: {
+          type: "string",
+        },
+      },
+    });
+    expect(printNode(gSchema.getTsType())).toBe("Record<string, Record<string, string>>");
+  });
 });

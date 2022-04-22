@@ -8,10 +8,6 @@ import ts, {
 } from "typescript";
 import { getRefTypeName, addJSDocComment } from "./util";
 
-type SourceFileMap = {
-  [fileName: string]: SourceFile;
-};
-
 export class GSchema {
   private schema?: SwaggerSchema;
   private tsTypeNode: ts.TypeNode;
@@ -94,8 +90,30 @@ export class GSchema {
 
   private toObjectType(): ts.TypeNode {
     const schema = this.schema;
+    const additionalProperties = schema?.additionalProperties;
+    // https://swagger.io/docs/specification/data-models/data-types/#additionalProperties
+    if (
+      additionalProperties &&
+      Object.keys(additionalProperties).length > 0 &&
+      typeof additionalProperties !== "boolean"
+    ) {
+      return factory.createTypeReferenceNode(
+        factory.createIdentifier("Record"),
+        [
+          factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+          new GSchema(additionalProperties).getTsType(),
+        ]
+      );
+    }
+
     if (!schema?.properties) {
-      return factory.createTypeLiteralNode([]);
+      return factory.createTypeReferenceNode(
+        factory.createIdentifier("Record"),
+        [
+          factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+          factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+        ]
+      );
     }
 
     const required = schema.required || [];
