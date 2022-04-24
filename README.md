@@ -15,8 +15,10 @@
 
 ```bash
 npm install @upace/swagger-to-ts --global
-
+# 在线swagger
 swagger-to-ts -s http://yourhost/api-docs -o output
+# 本地swagger
+swagger-to-ts -s ./swagger.json -o output
 ```
 
 ## 实现 httpClient

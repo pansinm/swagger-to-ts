@@ -10,8 +10,8 @@ describe("GParameter", () => {
         "parameters"
       ][0] as Parameter
     );
-    expect(printNode(gParameter.getTsType())).toBe("User[]");
-    expect(printNode(gParameter.getTsParameterDeclaration())).toBe(
+    expect(printNode(gParameter.tsType())).toBe("User[]");
+    expect(printNode(gParameter.tsNode())).toBe(
       "body: User[]"
     );
   });
@@ -24,8 +24,8 @@ describe("GParameter", () => {
       type: "string",
       default: "joy",
     });
-    expect(printNode(gParameter.getTsType())).toBe("string");
-    expect(printNode(gParameter.getTsParameterDeclaration())).toBe(
+    expect(printNode(gParameter.tsType())).toBe("string");
+    expect(printNode(gParameter.tsNode())).toBe(
       'username: string = "joy"'
     );
   });
@@ -37,8 +37,8 @@ describe("GParameter", () => {
       required: false,
       type: "string",
     });
-    expect(printNode(gParameter.getTsType())).toBe("string");
-    expect(printNode(gParameter.getTsParameterDeclaration())).toBe(
+    expect(printNode(gParameter.tsType())).toBe("string");
+    expect(printNode(gParameter.tsNode())).toBe(
       "username?: string"
     );
   });
@@ -49,8 +49,8 @@ describe("GParameter", () => {
       type: "number",
       default: 1,
     });
-    expect(printNode(gParameter.getTsType())).toBe("number");
-    expect(printNode(gParameter.getTsParameterDeclaration())).toBe(
+    expect(printNode(gParameter.tsType())).toBe("number");
+    expect(printNode(gParameter.tsNode())).toBe(
       "count: number = 1"
     );
   });
@@ -62,9 +62,22 @@ describe("GParameter", () => {
       required: false,
       type: "file",
     });
-    expect(printNode(gParameter.getTsType())).toBe("any");
-    expect(printNode(gParameter.getTsParameterDeclaration())).toBe(
+    expect(printNode(gParameter.tsType())).toBe("any");
+    expect(printNode(gParameter.tsNode())).toBe(
       "file?: any"
     );
   });
+
+  it('jsDocTag 返回该参数注释', () => {
+    const gParameter = new GParameter({
+      name: "count",
+      in: "query",
+      type: "number",
+      default: 1,
+      description: '注释'
+    });
+    expect(printNode(gParameter.jsDocTag())).toBe(
+      "@param {number} 注释"
+    );
+  })
 });

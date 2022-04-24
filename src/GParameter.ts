@@ -15,19 +15,54 @@ class GParameter {
   private tsParameterDeclarationNode: ts.ParameterDeclaration;
   constructor(parameter: Parameter) {
     this.parameter = parameter;
-    this.tsTypeNode = this.toTsType();
-    this.tsParameterDeclarationNode = this.toTsParameterDeclaration();
+    this.tsTypeNode = this.genTsType();
+    this.tsParameterDeclarationNode = this.genTsParameterDeclaration();
   }
 
-  getTsType() {
+  /**
+   * 参数类型
+   * @returns
+   */
+  tsType() {
     return this.tsTypeNode;
   }
 
-  getTsParameterDeclaration() {
+  /**
+   * parameter 节点
+   * @returns
+   */
+  tsNode() {
     return this.tsParameterDeclarationNode;
   }
 
-  private toTsType() {
+  /**
+   * 是否必填
+   * @returns
+   */
+  isRequired() {
+    return !!this.parameter.required;
+  }
+
+  /**
+   * 是否有默认值
+   * @returns
+   */
+  hasDefault() {
+    return typeof (this.parameter as QueryParameter).default !== "undefined";
+  }
+
+  /**
+   * 注释
+   */
+  jsDocTag() {
+    return factory.createJSDocTypeTag(
+      factory.createIdentifier("param"),
+      factory.createJSDocTypeExpression(this.tsType()),
+      this.parameter.description
+    );
+  }
+
+  private genTsType() {
     const schema = (this.parameter as BodyParameter).schema;
     if (schema) {
       const gSchema = new GSchema(schema);
@@ -42,11 +77,11 @@ class GParameter {
     return gSchema.tsType();
   }
 
-  private toTsParameterDeclaration() {
+  private genTsParameterDeclaration() {
     const defaultVal = (this.parameter as BaseSchema).default;
     const hasDefault = ["string", "number"].includes(typeof defaultVal);
     const questionToken =
-      this.parameter.required || hasDefault
+      this.isRequired() || this.hasDefault()
         ? undefined
         : factory.createToken(ts.SyntaxKind.QuestionToken);
     let initializer;
@@ -62,7 +97,7 @@ class GParameter {
       undefined,
       factory.createIdentifier(escapeVar(this.parameter.name)),
       questionToken,
-      this.getTsType(),
+      this.tsType(),
       initializer
     );
   }

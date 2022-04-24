@@ -14,6 +14,7 @@ import ts, { factory } from "typescript";
 import GParameter from "./GParameter";
 import { GSchema } from "./GSchema";
 import {
+  addJSDocComment,
   escapeVar,
   getRefedSchema,
   parseSwaggerPathTemplate,
@@ -43,7 +44,6 @@ class GOperation {
   private overrideOperationId?: string;
 
   parameterDeclarations: ts.ParameterDeclaration[];
-  jsDoc: ts.JSDoc;
   block: ts.Block;
   returnType: ts.TypeNode;
   rewritePath: NonNullable<Options["rewritePath"]>;
@@ -64,7 +64,6 @@ class GOperation {
     this.rewritePath = rewritePath || {};
     this.groupParameters();
     this.parameterDeclarations = this.generateParameterDeclarations();
-    this.jsDoc = this.generateJsDoc();
     this.block = this.generateBlock();
     this.returnType = this.generateReturnType();
   }
@@ -121,8 +120,8 @@ class GOperation {
    * 返回jsdoc
    * @returns
    */
-  getJsDoc() {
-    return this.jsDoc;
+  jsDoc() {
+    return this.generateJsDoc();
   }
 
   /**
@@ -131,6 +130,32 @@ class GOperation {
    */
   getReturnType() {
     return this.returnType;
+  }
+
+  exportFunction() {
+    const statement = factory.createVariableStatement(
+      [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+      factory.createVariableDeclarationList(
+        [
+          factory.createVariableDeclaration(
+            factory.createIdentifier(this.getId()!),
+            undefined,
+            undefined,
+            factory.createArrowFunction(
+              undefined,
+              undefined,
+              this.getParameterDeclarations(),
+              this.getReturnType(),
+              factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+              this.getBlock()
+            )
+          ),
+        ],
+        ts.NodeFlags.Const
+      )
+    );
+    addJSDocComment(statement, this.jsDoc());
+    return statement;
   }
 
   private filterValidBody(parameters: BodyParameter[]) {
@@ -179,16 +204,16 @@ class GOperation {
   private generateParameterDeclarations(): ts.ParameterDeclaration[] {
     return [
       ...this.path.map((param) =>
-        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
+        new GParameter(param as SwaggerParameter).tsNode()
       ),
       ...this.body.map((param) =>
-        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
+        new GParameter(param as SwaggerParameter).tsNode()
       ),
       ...this.formData.map((param) =>
-        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
+        new GParameter(param as SwaggerParameter).tsNode()
       ),
       ...this.query.map((param) =>
-        new GParameter(param as SwaggerParameter).getTsParameterDeclaration()
+        new GParameter(param as SwaggerParameter).tsNode()
       ),
     ].sort((a, b) => {
       const aWeight = +!!a.initializer + (!!a.questionToken ? 2 : 0);
