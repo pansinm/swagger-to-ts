@@ -1,5 +1,6 @@
 import { Operation, Path, Spec } from "swagger-schema-official";
 import ts, { factory } from "typescript";
+import GDefinition from "./GDefinition";
 import GOperation from "./GOperation";
 import { GSchema } from "./GSchema";
 import {
@@ -243,29 +244,8 @@ class Generator {
   generateDefinitions(): ts.SourceFile {
     const statements: ts.Statement[] = [];
     this.depRefs.forEach((ref) => {
-      const typeAliasName = getRefTypeName(ref);
-      const swaggerSchema = getRefedSchema(this.spec, ref);
-      const schema = new GSchema(swaggerSchema);
-      const typeNode = schema.tsType();
-      /**
-       * 生成类型,如：
-       * type A = {
-       *    a: string;
-       * }
-       */
-      const typeAliasDeclaration = factory.createTypeAliasDeclaration(
-        undefined,
-        [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
-        factory.createIdentifier(typeAliasName),
-        undefined,
-        typeNode
-      );
-
-      const comment = schema.jsDoc();
-      if (comment) {
-        addJSDocComment(typeAliasDeclaration, comment);
-      }
-      statements.push(typeAliasDeclaration);
+      const typeStatement = new GDefinition({ ref, spec: this.spec}).tsNode();
+      statements.push(typeStatement);
     });
     const sourceFile = factory.createSourceFile(
       statements,
