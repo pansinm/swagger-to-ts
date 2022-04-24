@@ -77,7 +77,7 @@ describe("GParameter", () => {
       description: '注释'
     });
     expect(printNode(gParameter.jsDocTag())).toBe(
-      "@param {number} 注释"
+      "@param {number} count 注释"
     );
   })
 });

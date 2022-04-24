@@ -51,13 +51,19 @@ class GParameter {
     return typeof (this.parameter as QueryParameter).default !== "undefined";
   }
 
+  identifierName() {
+    return escapeVar(this.parameter.name);
+  }
   /**
    * 注释
    */
   jsDocTag() {
-    return factory.createJSDocTypeTag(
-      factory.createIdentifier("param"),
+    return factory.createJSDocParameterTag(
+      undefined,
+      factory.createIdentifier(this.identifierName()),
+      false,
       factory.createJSDocTypeExpression(this.tsType()),
+      undefined,
       this.parameter.description
     );
   }
