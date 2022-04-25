@@ -74,6 +74,39 @@ describe("GSchema", () => {
         },
       },
     });
-    expect(printNode(gSchema.tsType())).toBe("Record<string, Record<string, string>>");
+    expect(printNode(gSchema.tsType())).toBe(
+      "Record<string, Record<string, string>>"
+    );
+  });
+  it("支持allOf", () => {
+    const gSchema = new GSchema({
+      description: "A representation of a cat",
+      allOf: [
+        {
+          $ref: "#/definitions/Pet",
+        },
+        {
+          type: "object",
+          properties: {
+            huntingSkill: {
+              type: "string",
+              description: "The measured skill for hunting",
+              default: "lazy",
+              enum: ["clueless", "lazy", "adventurous", "aggressive"],
+            },
+          },
+          required: ["huntingSkill"],
+        },
+      ],
+    });
+    expect(printNode(gSchema.tsType())).toBe(
+      `
+Pet & {
+    /**
+     * The measured skill for hunting */
+    huntingSkill: "clueless" | "lazy" | "adventurous" | "aggressive";
+}
+    `.trim()
+    );
   });
 });

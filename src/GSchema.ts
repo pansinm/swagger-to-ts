@@ -1,4 +1,4 @@
-import { Schema as SwaggerSchema } from "swagger-schema-official";
+import { Schema, Schema as SwaggerSchema } from "swagger-schema-official";
 import ts, {
   factory,
   SourceFile,
@@ -86,6 +86,13 @@ export class GSchema {
 
   private genBooleanType() {
     return factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword);
+  }
+
+  private genAllOfType() {
+    const all = this.schema?.allOf as Schema[];
+    return factory.createIntersectionTypeNode(
+      all.map((schema) => new GSchema(schema).tsType())
+    );
   }
 
   private genObjectType(): ts.TypeNode {
@@ -183,6 +190,10 @@ export class GSchema {
   private genTsType(): ts.TypeNode {
     if (!this.schema) {
       return this.genUnknownType();
+    }
+
+    if (this.schema.allOf) {
+      return this.genAllOfType();
     }
 
     if (this.schema.$ref) {
