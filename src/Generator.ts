@@ -2,7 +2,6 @@ import { Operation, Path, Spec } from "swagger-schema-official";
 import ts, { factory } from "typescript";
 import GDefinition from "./GDefinition";
 import GOperation from "./GOperation";
-import { GSchema } from "./GSchema";
 import {
   addJSDocComment,
   Filter,
@@ -143,7 +142,7 @@ class Generator {
           spec: this.spec,
           rewritePath: this.options.rewritePath,
         });
-        gOperation.usedTypeNames().forEach((name) => usedTypeNames.add(name));
+        gOperation.dependencyTypes().forEach((name) => usedTypeNames.add(name));
         const statement = gOperation.exportFunction();
         statements.push(statement);
       });

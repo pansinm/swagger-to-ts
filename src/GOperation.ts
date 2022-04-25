@@ -9,6 +9,7 @@ import {
   FormDataParameter,
   QueryParameter,
   Response,
+  Parameter,
 } from "swagger-schema-official";
 import ts, { factory } from "typescript";
 import GParameter from "./GParameter";
@@ -43,6 +44,8 @@ class GOperation {
   private query: QueryParameter[] = [];
   private overrideOperationId?: string;
 
+  private gParameters: GParameter[] = [];
+
   parameterDeclarations: ts.ParameterDeclaration[];
   block: ts.Block;
   returnType: ts.TypeNode;
@@ -62,13 +65,21 @@ class GOperation {
     this.method = method;
     this.overrideOperationId = overrideOperationId;
     this.rewritePath = rewritePath || {};
+    this.gParameters =
+      this.operation.parameters?.map(
+        (parameter) => new GParameter(parameter as Parameter)
+      ) || [];
     this.groupParameters();
     this.parameterDeclarations = this.generateParameterDeclarations();
     this.block = this.generateBlock();
     this.returnType = this.generateReturnType();
   }
 
-  usedTypeNames() {
+  /**
+   * 依赖的类型
+   * @returns 
+   */
+  dependencyTypes() {
     const typeNames = new Set<string>([]);
 
     const exactTypeNames = (root: ts.Node) => {
@@ -93,11 +104,11 @@ class GOperation {
   }
 
   /**
-   * 返回id
+   * 标识名称
    * @returns
    */
-  getId() {
-    return this.overrideOperationId || this.operation.operationId;
+  identifierName() {
+    return escapeVar(this.overrideOperationId || this.operation.operationId as string);
   }
 
   /**
@@ -117,14 +128,6 @@ class GOperation {
   }
 
   /**
-   * 返回jsdoc
-   * @returns
-   */
-  jsDoc() {
-    return this.generateJsDoc();
-  }
-
-  /**
    * 返回返回值类型
    * @returns
    */
@@ -138,7 +141,7 @@ class GOperation {
       factory.createVariableDeclarationList(
         [
           factory.createVariableDeclaration(
-            factory.createIdentifier(this.getId()!),
+            factory.createIdentifier(this.identifierName()!),
             undefined,
             undefined,
             factory.createArrowFunction(
@@ -154,7 +157,7 @@ class GOperation {
         ts.NodeFlags.Const
       )
     );
-    addJSDocComment(statement, this.jsDoc());
+    addJSDocComment(statement, this.generateJsDoc());
     return statement;
   }
 

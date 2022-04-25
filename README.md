@@ -1,10 +1,12 @@
 # @upace/swagger-to-ts
 
-通过 swagger 文档生成 TypeScript 代码，生成代码结构如下：
+通过 swagger 文档生成 TypeScript 代码，支持 [swagger 2.0](https://swagger.io/specification/v2/)
+
+生成代码结构如下：
 
 ![](./screenshot/2022-04-18_16-09.png)
 
-国内用户可访问 [gitee 镜像](https://gitee.com/upace/swagger-to-ts)
+国内可访问 [gitee 镜像](https://gitee.com/upace/swagger-to-ts)
 
 ## 特性
 1. 尽可能兼容不规范的文档，definitions 使用中文或其他特殊符号定义时，转换成拼音和下划线
