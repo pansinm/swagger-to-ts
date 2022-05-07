@@ -24,4 +24,25 @@ export const loginUser = (username: string, password: string): Promise<string> =
     `.trim()
     );
   });
+  it('formData', () => {
+    const gOperation = new GOperation({
+      method: 'post',
+      operation: swagger.paths['/pet/{petId}'].post as Operation,
+      pathName: "/pet/{petId}",
+      spec: swagger as Spec
+    })
+    expect(printNode(gOperation.exportFunction())).toBe(
+      `
+/**
+ * Updates a pet in the store with form data
+ *
+ * @param petId ID of pet that needs to be updated
+ * @param name Updated name of the pet
+ * @param status Updated status of the pet
+ * @returns
+ */
+export const updatePetWithForm = (petId: number, name?: string, status?: string): Promise<void> => { return httpClient.post(\`/v2/pet/\${petId}\`, { formData: { name: name, status: status } }); };
+      `.trim()
+    )
+  })
 });

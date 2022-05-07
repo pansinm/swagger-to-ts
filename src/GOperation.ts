@@ -333,16 +333,25 @@ class GOperation {
       ]);
     }
     if (this.formData.length) {
-      const formData = this.formData[0];
       return factory.createObjectLiteralExpression([
         factory.createPropertyAssignment(
           factory.createIdentifier("formData"),
-          factory.createIdentifier(formData.name)
+          this.createFormData(),
         ),
       ]);
     }
     return null;
   }
+
+  private createFormData() {
+    return factory.createObjectLiteralExpression(
+      this.formData.map(item => factory.createPropertyAssignment(
+        factory.createIdentifier(item.name),
+        factory.createIdentifier(item.name)
+      ))
+    )
+  }
+
 
   /**
    * 返回类型
